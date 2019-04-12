@@ -42,8 +42,8 @@ class _ConverterScreenState extends State<ConverterScreen> {
   Unit _toValue;
   double _inputValue;
   String _convertedValue = '';
+  List<DropdownMenuItem> _unitMenuItems;
   bool _showValidationError = false;
-  List<DropdownMenuItem> _unitMenuItems = List<DropdownMenuItem>();
 
   @override
   void initState() {
@@ -53,17 +53,10 @@ class _ConverterScreenState extends State<ConverterScreen> {
   }
 
   /// Creates fresh list of [DropdownMenuItem] widgets, given a list of [Unit]s.
-  ///
   void _createDropdownMenuItems() {
-    widget.units.forEach((unit) => {
-      _unitMenuItems.add(
-        DropdownMenuItem(value: unit.name, child: Text(unit.name))),
-    });
-    print(_unitMenuItems);
-  }
-  void _test() {
-    for(var unit in widget.units) {
-      _unitMenuItems.add(DropdownMenuItem(
+    var newItems = <DropdownMenuItem>[];
+    for (var unit in widget.units) {
+      newItems.add(DropdownMenuItem(
         value: unit.name,
         child: Container(
           child: Text(
@@ -73,14 +66,16 @@ class _ConverterScreenState extends State<ConverterScreen> {
         ),
       ));
     }
+    setState(() {
+      _unitMenuItems = newItems;
+    });
   }
 
   /// Sets the default values for the 'from' and 'to' [Dropdown]s.
   void _setDefaults() {
     setState(() {
-      _fromValue = widget.units.first;
+      _fromValue = widget.units[0];
       _toValue = widget.units[1];
-      _inputValue = 0;
     });
   }
 
@@ -101,14 +96,30 @@ class _ConverterScreenState extends State<ConverterScreen> {
   }
 
   void _updateConversion() {
-    // TODO: Add code
-    // Idea: convertedValue = inputValue * (toValue.conversion / fromValue.conversion)
-    _convertedValue = _format(_inputValue * (_toValue.conversion / _fromValue.conversion));
+    setState(() {
+      _convertedValue =
+          _format(_inputValue * (_toValue.conversion / _fromValue.conversion));
+    });
   }
 
   void _updateInputValue(String input) {
-    // TODO: Add code
-    // Idea: Validation if input is a valid number (double); show validatin error other otherwise
+    setState(() {
+      if (input == null || input.isEmpty) {
+        _convertedValue = '';
+      } else {
+        // Even though we are using the numerical keyboard, we still have to check
+        // for non-numerical input such as '5..0' or '6 -3'
+        try {
+          final inputDouble = double.parse(input);
+          _showValidationError = false;
+          _inputValue = inputDouble;
+          _updateConversion();
+        } on Exception catch (e) {
+          print('Error: $e');
+          _showValidationError = true;
+        }
+      }
+    });
   }
 
   Unit _getUnit(String unitName) {
@@ -158,12 +169,10 @@ class _ConverterScreenState extends State<ConverterScreen> {
         child: DropdownButtonHideUnderline(
           child: ButtonTheme(
             alignedDropdown: true,
-
-            // TODO: Add DropDownButton as a child
             child: DropdownButton(
+              value: currentValue,
               items: _unitMenuItems,
-              onChanged: null,
-              value: "default",
+              onChanged: onChanged,
               style: Theme.of(context).textTheme.title,
             ),
           ),
@@ -182,20 +191,20 @@ class _ConverterScreenState extends State<ConverterScreen> {
           // This is the widget that accepts text input. In this case, it
           // accepts numbers and calls the onChanged property on update.
           // You can read more about it here: https://flutter.io/text-input
-
-          // TODO: Add a TextField Widget
-          InputDecorator(
-            child: Text(
-              "test",
-              style: Theme.of(context).textTheme.display1,
-            ),
+          TextField(
+            style: Theme.of(context).textTheme.display1,
             decoration: InputDecoration(
-              labelText: 'Input',
               labelStyle: Theme.of(context).textTheme.display1,
+              errorText: _showValidationError ? 'Invalid number entered' : null,
+              labelText: 'Input',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(0.0),
-              )
+              ),
             ),
+            // Since we only want numerical input, we use a number keyboard. There
+            // are also other keyboards for dates, emails, phone numbers, etc.
+            keyboardType: TextInputType.number,
+            onChanged: _updateInputValue,
           ),
           _createDropdown(_fromValue.name, _updateFromConversion),
         ],
@@ -228,9 +237,7 @@ class _ConverterScreenState extends State<ConverterScreen> {
               ),
             ),
           ),
-
-          // TODO: Add a Dropdown widget
-          _createDropdown(_fromValue.name, _updateFromConversion),
+          _createDropdown(_toValue.name, _updateToConversion),
         ],
       ),
     );
