@@ -74,3 +74,7 @@ del sf['type']
 
 # Save SFrame
 sf.save('ig02.sframe')
+
+print type(sf)
+print type(sf['annotations'])
+print type(sf['annotations'][0])
